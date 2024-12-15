@@ -43,6 +43,10 @@
       display: none;
       margin: 10px 0;
     }
+    #total-records {
+      font-size: 16px;
+      margin: 10px 0;
+    }
   </style>
 </head>
 <body>
@@ -54,6 +58,7 @@
   </form>
   <p id="loader">Loading data, please wait...</p>
   <p id="error-message">Error fetching data. Please try again.</p>
+  <p id="total-records" style="display: none;">Total Records: 0</p>
   <table>
     <thead>
       <tr>
@@ -77,36 +82,52 @@
       const loader = document.getElementById('loader');
       const errorMessage = document.getElementById('error-message');
       const tableBody = document.getElementById('data-table');
+      const totalRecords = document.getElementById('total-records');
 
       loader.style.display = 'block';
       errorMessage.style.display = 'none';
       tableBody.innerHTML = ''; // Clear previous data
+      totalRecords.style.display = 'none';
 
       try {
-        const response = await fetch(apiUrl,{headers:{"Content-Type":"application/json"}});
+        const response = await fetch(apiUrl, {headers: {"Content-Type": "application/json"}});
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
         const data = await response.json();
 
-        data.instances.forEach(instance => {
-          const row = document.createElement('tr');
+        if (data.instances.length === 0) {
+          const noDataRow = document.createElement('tr');
+          const noDataCell = document.createElement('td');
+          noDataCell.colSpan = 3;
+          noDataCell.textContent = 'No data available';
+          noDataCell.style.textAlign = 'center';
+          noDataRow.appendChild(noDataCell);
+          tableBody.appendChild(noDataRow);
+        } else {
+          data.instances.forEach(instance => {
+            const row = document.createElement('tr');
 
-          const regionCell = document.createElement('td');
-          regionCell.textContent = instance.Region;
+            const regionCell = document.createElement('td');
+            regionCell.textContent = instance.Region;
 
-          const instanceIdCell = document.createElement('td');
-          instanceIdCell.textContent = instance.InstanceId;
+            const instanceIdCell = document.createElement('td');
+            instanceIdCell.textContent = instance.InstanceId;
 
-          const stateCell = document.createElement('td');
-          stateCell.textContent = instance.State;
+            const stateCell = document.createElement('td');
+            stateCell.textContent = instance.State;
 
-          row.appendChild(regionCell);
-          row.appendChild(instanceIdCell);
-          row.appendChild(stateCell);
+            row.appendChild(regionCell);
+            row.appendChild(instanceIdCell);
+            row.appendChild(stateCell);
 
-          tableBody.appendChild(row);
-        });
+            tableBody.appendChild(row);
+          });
+        }
+
+        totalRecords.textContent = `Total Records: ${data.instances.length}`;
+        totalRecords.style.display = 'block';
+
       } catch (error) {
         console.error('Error fetching data:', error);
         errorMessage.style.display = 'block';
