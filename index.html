@@ -47,6 +47,11 @@
       font-size: 16px;
       margin: 10px 0;
     }
+    .redirect-icon {
+      cursor: pointer;
+      color: blue;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -65,6 +70,7 @@
         <th>Region</th>
         <th>Instance ID</th>
         <th>State</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="data-table">
@@ -73,66 +79,92 @@
   </table>
 
   <script>
-    document.getElementById('region-form').addEventListener('submit', async function(event) {
-      event.preventDefault();
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const regionInput = urlParams.get('region');
 
-      const regionInput = document.getElementById('region').value;
-      const apiUrl = `https://wmrlk8a699.execute-api.us-east-1.amazonaws.com/dev/?Region=${regionInput}`;
+      if (regionInput) {
+        // Set the region field in the form
+        document.getElementById('region').value = regionInput;
+        fetchData(regionInput);  // Fetch data if region is present in query params
+      }
 
-      const loader = document.getElementById('loader');
-      const errorMessage = document.getElementById('error-message');
-      const tableBody = document.getElementById('data-table');
-      const totalRecords = document.getElementById('total-records');
+      document.getElementById('region-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
 
-      loader.style.display = 'block';
-      errorMessage.style.display = 'none';
-      tableBody.innerHTML = ''; // Clear previous data
-      totalRecords.style.display = 'none';
+        const regionInput = document.getElementById('region').value;
+        fetchData(regionInput);
+      });
 
-      try {
-        const response = await fetch(apiUrl, {headers: {"Content-Type": "application/json"}});
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
+      async function fetchData(regionInput) {
+        const apiUrl = `https://wmrlk8a699.execute-api.us-east-1.amazonaws.com/dev/?Region=${regionInput}`;
+        
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const tableBody = document.getElementById('data-table');
+        const totalRecords = document.getElementById('total-records');
+
+        loader.style.display = 'block';
+        errorMessage.style.display = 'none';
+        tableBody.innerHTML = ''; // Clear previous data
+        totalRecords.style.display = 'none';
+
+        try {
+          const response = await fetch(apiUrl, {headers: {"Content-Type": "application/json"}});
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          const data = await response.json();
+
+          if (data.instances.length === 0) {
+            const noDataRow = document.createElement('tr');
+            const noDataCell = document.createElement('td');
+            noDataCell.colSpan = 4;
+            noDataCell.textContent = 'No data available';
+            noDataCell.style.textAlign = 'center';
+            noDataRow.appendChild(noDataCell);
+            tableBody.appendChild(noDataRow);
+          } else {
+            data.instances.forEach(instance => {
+              const row = document.createElement('tr');
+
+              const regionCell = document.createElement('td');
+              regionCell.textContent = instance.Region;
+
+              const instanceIdCell = document.createElement('td');
+              instanceIdCell.textContent = instance.InstanceId;
+
+              const stateCell = document.createElement('td');
+              stateCell.textContent = instance.State;
+
+              const actionCell = document.createElement('td');
+              const redirectIcon = document.createElement('span');
+              redirectIcon.textContent = 'Redirect';
+              redirectIcon.className = 'redirect-icon';
+              redirectIcon.onclick = () => {
+                const url = `redirection_action.html?region=${instance.Region}&instance=${instance.InstanceId}&state=${instance.State}`;
+                window.location.href = url;
+              };
+              actionCell.appendChild(redirectIcon);
+
+              row.appendChild(regionCell);
+              row.appendChild(instanceIdCell);
+              row.appendChild(stateCell);
+              row.appendChild(actionCell);
+
+              tableBody.appendChild(row);
+            });
+          }
+
+          totalRecords.textContent = `Total Records: ${data.instances.length}`;
+          totalRecords.style.display = 'block';
+
+        } catch (error) {
+          console.error('Error fetching data:', error);
+          errorMessage.style.display = 'block';
+        } finally {
+          loader.style.display = 'none';
         }
-        const data = await response.json();
-
-        if (data.instances.length === 0) {
-          const noDataRow = document.createElement('tr');
-          const noDataCell = document.createElement('td');
-          noDataCell.colSpan = 3;
-          noDataCell.textContent = 'No data available';
-          noDataCell.style.textAlign = 'center';
-          noDataRow.appendChild(noDataCell);
-          tableBody.appendChild(noDataRow);
-        } else {
-          data.instances.forEach(instance => {
-            const row = document.createElement('tr');
-
-            const regionCell = document.createElement('td');
-            regionCell.textContent = instance.Region;
-
-            const instanceIdCell = document.createElement('td');
-            instanceIdCell.textContent = instance.InstanceId;
-
-            const stateCell = document.createElement('td');
-            stateCell.textContent = instance.State;
-
-            row.appendChild(regionCell);
-            row.appendChild(instanceIdCell);
-            row.appendChild(stateCell);
-
-            tableBody.appendChild(row);
-          });
-        }
-
-        totalRecords.textContent = `Total Records: ${data.instances.length}`;
-        totalRecords.style.display = 'block';
-
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        errorMessage.style.display = 'block';
-      } finally {
-        loader.style.display = 'none';
       }
     });
   </script>
